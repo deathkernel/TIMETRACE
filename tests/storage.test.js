@@ -61,3 +61,31 @@ test("stores activity in hourly buckets", async () => {
   assert.equal(data.hours["2026-10-31"]["14"]["hourly.test"], 30);
   assert.equal(data.days["2026-10-31"]["hourly.test"], 60);
 });
+
+test("applies the configured history window", async () => {
+  await store.replaceData({
+    version: 1,
+    days: {
+      "2026-01-01": { "old.example": 120 },
+      "2026-10-30": { "recent.example": 240 }
+    },
+    hours: {
+      "2026-01-01": { "10": { "old.example": 120 } },
+      "2026-10-30": { "11": { "recent.example": 240 } }
+    },
+    alerts: {
+      "2026-01-01|old.example|80": true,
+      "2026-10-30|recent.example|80": true
+    }
+  });
+
+  const result = await store.setRetention(30);
+  const data = await store.getData();
+  assert.equal(result.removedDays, 1);
+  assert.equal(data.days["2026-01-01"], undefined);
+  assert.ok(data.days["2026-10-30"]);
+  assert.equal(data.hours["2026-01-01"], undefined);
+  assert.ok(data.hours["2026-10-30"]);
+  assert.equal(data.alerts["2026-01-01|old.example|80"], undefined);
+  assert.equal(data.settings.retentionDays, 30);
+});
