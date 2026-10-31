@@ -1,0 +1,27 @@
+name: TimeTrace CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          node --check background.js
+          node --check storage.js
+          node --check popup/popup.js
+          node --check dashboard/dashboard.js
+          node --check tests/storage.test.js
+      - name: Run storage tests
+        run: npm test
