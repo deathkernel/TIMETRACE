@@ -1,34 +1,32 @@
 # TimeTrace
 
-A privacy-first Chrome extension that tracks active browsing time locally.
+A privacy-first Chrome Manifest V3 extension for understanding active browsing time.
 
 ## Features
-- Tracks the active tab only while Chrome is focused and the user is not idle.
-- Daily website usage totals and recent activity.
-- Built-in website categories (Work, Learning, Social, Entertainment, Other).
-- Editable category rules and per-site daily goals.
-- Dashboard with today / 7-day / 30-day summaries.
-- Local-only data using `chrome.storage.local`; no AI, analytics server, or account.
-- Export and import backups as JSON.
+- Tracks the active website while the Chrome window is focused and the user is active.
+- Daily, 7-day and 30-day analytics with category breakdowns.
+- Editable website categories and daily time goals.
+- Optional browser notifications at 80% and 100% of a website's daily goal.
+- JSON backup and restore.
+- Local-only storage. No AI, account, analytics server or external service.
 
-## Install (developer mode)
-1. Download or clone this repository.
-2. Open `chrome://extensions`.
-3. Enable **Developer mode**.
-4. Choose **Load unpacked** and select this folder.
-5. Pin TimeTrace.
+## Install
+1. Clone or download this repository.
+2. Open chrome://extensions.
+3. Enable Developer mode.
+4. Click Load unpacked and select this folder.
+5. Pin TimeTrace to the toolbar.
 
-## Privacy and tracking notes
-TimeTrace records domain-level activity durations, not page contents, URLs, form values, or keystrokes. Tracking pauses when Chrome loses focus, the active tab is not a normal web page, or Chrome's idle API reports the user idle/locked. Browser APIs can delay suspend events; the service worker reconciles elapsed time with a short heartbeat and caps each accounting interval to reduce over-counting.
+## Privacy
+TimeTrace stores domain-level durations, category choices, goals and alert markers in chrome.storage.local. Its tracking session timestamp is stored in chrome.storage.session so it can survive service-worker suspension but is cleared when the browser session ends. It does not record page contents, full URLs, form values or keystrokes.
 
-All records remain in Chrome local extension storage. Clearing extension data removes the local history.
+The extension requests tabs, storage, idle, alarms and notifications permissions. Broad HTTP/HTTPS host access is used only to read the active tab's hostname. All analysis runs locally.
 
-## Project layout
-- `manifest.json`: Manifest V3 permissions and entry points.
-- `background.js`: tracking engine, idle/focus/tab lifecycle handling.
-- `storage.js`: local persistence and aggregation helpers.
-- `popup/`: quick today summary.
-- `dashboard/`: detailed reports, site categories, goals and backup controls.
+## Tracking accuracy
+The tracker reconciles on tab, window, focus and idle events, plus a 30-second heartbeat. Each interval is capped at 45 seconds so a delayed worker does not add an arbitrarily large amount of time. Intervals crossing local midnight are split between the correct dates. Browser lifecycle and API scheduling can still cause small measurement gaps; this is an estimate of active tab time, not operating-system-wide screen time.
 
 ## Development
-No build step or third-party dependency is required. The dashboard charts are drawn with native SVG/CSS, keeping the extension fully offline.
+No third-party runtime dependency or build step is required.
+
+Run tests with Node.js:
+    npm test
