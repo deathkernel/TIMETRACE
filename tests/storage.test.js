@@ -49,3 +49,15 @@ test("validates categories and goals", async () => {
   await assert.rejects(() => store.setGoal("bad", 1800));
   await assert.rejects(() => store.setCategory("example.com", "Unknown"));
 });
+
+test("stores activity in hourly buckets", async () => {
+  const start = new Date("2026-10-31T13:59:30.000Z").getTime();
+  const end = new Date("2026-10-31T14:00:30.000Z").getTime();
+  const result = await store.addDuration("hourly.test", start, end);
+  const data = await store.getData();
+
+  assert.equal(result.length, 2);
+  assert.equal(data.hours["2026-10-31"]["13"]["hourly.test"], 30);
+  assert.equal(data.hours["2026-10-31"]["14"]["hourly.test"], 30);
+  assert.equal(data.days["2026-10-31"]["hourly.test"], 60);
+});
