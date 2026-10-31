@@ -30,6 +30,8 @@ test("splits tracking across local midnight", async () => {
   assert.equal(result.length, 2);
   assert.equal(data.days["2026-10-31"]["example.com"], 20);
   assert.equal(data.days["2026-11-01"]["example.com"], 40);
+  assert.equal(data.hours["2026-10-31"]["23"]["example.com"], 20);
+  assert.equal(data.hours["2026-11-01"]["0"]["example.com"], 40);
 });
 
 test("goal alerts can only be claimed once per threshold", async () => {
