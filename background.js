@@ -4,6 +4,7 @@ const IDLE_SECONDS = 60;
 const HEARTBEAT_MINUTES = 0.5;
 const STATE_KEY = "timetraceTrackingState";
 const FOCUS_KEY = "timetraceChromeFocused";
+const RETENTION_ALARM = "timetrace-retention-cleanup";
 let queue = Promise.resolve();
 
 function serialized(task) {
@@ -82,6 +83,8 @@ async function reconcile() {
 async function initializeTracker() {
   try { chrome.idle.setDetectionInterval(IDLE_SECONDS); } catch {}
   await chrome.alarms.create("timetrace-heartbeat", { periodInMinutes: HEARTBEAT_MINUTES });
+  await chrome.alarms.create(RETENTION_ALARM, { periodInMinutes: 1440 });
+  await TimeTraceStore.pruneOldData();
   await reconcile();
 }
 
@@ -89,6 +92,7 @@ chrome.runtime.onInstalled.addListener(() => serialized(initializeTracker));
 chrome.runtime.onStartup.addListener(() => serialized(initializeTracker));
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === "timetrace-heartbeat") serialized(reconcile);
+  if (alarm.name === RETENTION_ALARM) serialized(() => TimeTraceStore.pruneOldData());
 });
 chrome.tabs.onActivated.addListener(() => serialized(reconcile));
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
