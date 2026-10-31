@@ -10,33 +10,67 @@
   <div class="layout">
     <aside class="sidebar">
       <div class="brand"><div class="brand-mark">T</div><div><b>TimeTrace</b><small>PERSONAL ANALYTICS</small></div></div>
-      <div class="nav-label">WORKSPACE</div><a class="nav active" href="#overview">▦ &nbsp; Overview</a><a class="nav" href="#websites">◷ &nbsp; Websites</a><a class="nav" href="#goals">◎ &nbsp; Goals</a>
-      <div class="sidebar-bottom"><div class="privacy"><span>●</span><b>Your data stays yours</b><p>All tracking is stored locally in this browser. No account, no cloud.</p></div><small>TIMETRACE · VERSION 1.0.0</small></div>
+      <div class="nav-label">WORKSPACE</div>
+      <a class="nav active" href="#overview">▦ &nbsp; Overview</a>
+      <a class="nav" href="#categories">◒ &nbsp; Categories</a>
+      <a class="nav" href="#websites">◷ &nbsp; Websites</a>
+      <a class="nav" href="#goals">◎ &nbsp; Goals</a>
+      <div class="sidebar-bottom">
+        <div class="privacy"><span>●</span><b>Your data stays yours</b><p>All tracking and analytics stay on this browser. No account, no cloud.</p></div>
+        <small>TIMETRACE · VERSION 1.1.0</small>
+      </div>
     </aside>
     <main class="main">
-      <header class="topbar"><div><div class="crumb">WORKSPACE / OVERVIEW</div><h1>Your time, clearly seen.</h1><p>A little awareness can change a lot.</p></div><div class="top-actions"><button id="exportBtn" class="ghost">↓ Export</button><button id="importBtn" class="ghost">↑ Import</button><input id="importFile" type="file" accept="application/json" hidden></div></header>
+      <header class="topbar">
+        <div><div class="crumb">WORKSPACE / OVERVIEW</div><h1>Your time, clearly seen.</h1><p>A little awareness can change a lot.</p></div>
+        <div class="top-actions">
+          <button id="exportBtn" class="ghost">↓ Export</button>
+          <button id="importBtn" class="ghost">↑ Import</button>
+          <input id="importFile" type="file" accept="application/json" hidden>
+        </div>
+      </header>
+
       <section id="overview" class="stats">
         <article class="stat-card accent"><span>TOTAL TIME TODAY</span><strong id="todayTotal">0m</strong><small id="todayChange">Across all websites</small><div class="spark">◌</div></article>
         <article class="stat-card"><span>WEBSITES VISITED</span><strong id="siteCount">0</strong><small>Distinct domains today</small></article>
         <article class="stat-card"><span>TOP CATEGORY</span><strong id="topCategory">—</strong><small id="categoryTime">No activity yet</small></article>
-        <article class="stat-card"><span>DAILY GOALS MET</span><strong id="goalsMet">0/0</strong><small>Based on your site limits</small></article>
+        <article class="stat-card"><span>GOALS WITHIN LIMIT</span><strong id="goalsMet">0/0</strong><small id="goalsMeta">No daily goals configured</small></article>
       </section>
+
       <section class="panel chart-panel">
-        <div class="panel-head"><div><h2>Activity overview</h2><p>Your browsing rhythm over time</p></div><div class="range-switch"><button data-range="7" class="selected">7 days</button><button data-range="30">30 days</button></div></div>
-        <div id="chart" class="chart"></div><div class="chart-legend"><span><i></i> Time spent browsing</span><b id="average">Daily average: 0m</b></div>
+        <div class="panel-head">
+          <div><h2>Activity overview</h2><p>Your browsing rhythm over time</p></div>
+          <div class="range-switch"><button data-range="7" class="selected">7 days</button><button data-range="30">30 days</button></div>
+        </div>
+        <div id="chart" class="chart"></div>
+        <div class="chart-legend"><span><i></i> Time spent browsing</span><b id="average">Daily average: 0m</b></div>
       </section>
+
+      <section id="categories" class="panel">
+        <div class="panel-head"><div><h2>Category breakdown</h2><p>How your browsing time is distributed in the selected period</p></div><span class="muted" id="categoryPeriod">Last 7 days</span></div>
+        <div id="categoryBreakdown" class="category-breakdown"></div>
+      </section>
+
       <section id="websites" class="panel">
         <div class="panel-head"><div><h2>Website breakdown</h2><p>Where your time goes today</p></div><span class="muted" id="siteCountLabel">0 websites</span></div>
         <div id="websiteList" class="website-list"></div>
       </section>
+
       <section id="goals" class="panel">
-        <div class="panel-head"><div><h2>Website goals</h2><p>Set a daily limit to stay intentional</p></div></div>
-        <form id="goalForm" class="goal-form"><input id="goalDomain" placeholder="example.com" required><input id="goalMinutes" type="number" min="1" max="1440" placeholder="Minutes" required><button class="primary">Add goal</button></form>
+        <div class="panel-head"><div><h2>Website goals</h2><p>Set a daily usage limit and get alerts at 80% and 100%</p></div></div>
+        <form id="goalForm" class="goal-form">
+          <input id="goalDomain" placeholder="example.com" autocomplete="off" required>
+          <input id="goalMinutes" type="number" min="1" max="1440" placeholder="Minutes per day" required>
+          <button class="primary">Add goal</button>
+        </form>
+        <p id="goalFeedback" class="form-feedback" aria-live="polite"></p>
         <div id="goalList" class="goal-list"></div>
       </section>
-      <footer class="footer">TIME TRACE · PRIVATE BY DESIGN <span>Made for more mindful browsing.</span></footer>
+
+      <footer class="footer">TIMETRACE · PRIVATE BY DESIGN <span>Active-tab time estimate · Stored on this device</span></footer>
     </main>
   </div>
-  <script src="../storage.js"></script><script src="dashboard.js"></script>
+  <script src="../storage.js"></script>
+  <script src="dashboard.js"></script>
 </body>
 </html>
