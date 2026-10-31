@@ -63,29 +63,35 @@ test("stores activity in hourly buckets", async () => {
 });
 
 test("applies the configured history window", async () => {
+  const recentDate = new Date();
+  const recentKey = store.todayKey(recentDate);
+  const oldDate = new Date(recentDate);
+  oldDate.setDate(oldDate.getDate() - 60);
+  const oldKey = store.todayKey(oldDate);
+
   await store.replaceData({
     version: 1,
     days: {
-      "2026-01-01": { "old.example": 120 },
-      "2026-10-30": { "recent.example": 240 }
+      [oldKey]: { "old.example": 120 },
+      [recentKey]: { "recent.example": 240 }
     },
     hours: {
-      "2026-01-01": { "10": { "old.example": 120 } },
-      "2026-10-30": { "11": { "recent.example": 240 } }
+      [oldKey]: { "10": { "old.example": 120 } },
+      [recentKey]: { "11": { "recent.example": 240 } }
     },
     alerts: {
-      "2026-01-01|old.example|80": true,
-      "2026-10-30|recent.example|80": true
+      [oldKey + "|old.example|80"]: true,
+      [recentKey + "|recent.example|80"]: true
     }
   });
 
   const result = await store.setRetention(30);
   const data = await store.getData();
   assert.equal(result.removedDays, 1);
-  assert.equal(data.days["2026-01-01"], undefined);
-  assert.ok(data.days["2026-10-30"]);
-  assert.equal(data.hours["2026-01-01"], undefined);
-  assert.ok(data.hours["2026-10-30"]);
-  assert.equal(data.alerts["2026-01-01|old.example|80"], undefined);
+  assert.equal(data.days[oldKey], undefined);
+  assert.ok(data.days[recentKey]);
+  assert.equal(data.hours[oldKey], undefined);
+  assert.ok(data.hours[recentKey]);
+  assert.equal(data.alerts[oldKey + "|old.example|80"], undefined);
   assert.equal(data.settings.retentionDays, 30);
 });
