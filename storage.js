@@ -1,6 +1,7 @@
 (() => {
   const KEY = "timetraceData";
   const VERSION = 1;
+  const CATEGORIES = ["Work", "Learning", "Social", "Entertainment", "Other"];
 
   function todayKey(date = new Date()) {
     const y = date.getFullYear();
@@ -13,7 +14,22 @@
     try {
       const parsed = new URL(url);
       if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
-      return parsed.hostname.replace(/^www\./i, "").toLowerCase();
+      return parsed.hostname.replace(/^www\./i, "").toLowerCase() || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function normalizeDomain(value) {
+    const input = String(value || "").trim();
+    if (!input) return null;
+    try {
+      const parsed = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(input) ? input : "https://" + input);
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
+      const domain = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+      if (!domain || !domain.includes(".") || domain.length > 253) return null;
+      if (!/^[a-z0-9.-]+$/.test(domain) || domain.startsWith(".") || domain.endsWith(".") || domain.includes("..")) return null;
+      return domain;
     } catch {
       return null;
     }
@@ -29,51 +45,100 @@
     return (rules.find(([, regex]) => regex.test(domain)) || ["Other"])[0];
   }
 
+  function emptyData() {
+    return { version: VERSION, days: {}, categories: {}, goals: {}, alerts: {}, settings: { idleSeconds: 60 } };
+  }
+
   async function read() {
     const result = await chrome.storage.local.get(KEY);
-    const data = result[KEY];
-    if (data && data.version === VERSION) return data;
-    return { version: VERSION, days: {}, categories: {}, goals: {}, settings: { idleSeconds: 60 } };
+    const stored = result[KEY];
+    if (!stored || stored.version !== VERSION) return emptyData();
+    return {
+      ...emptyData(),
+      ...stored,
+      days: stored.days || {},
+      categories: stored.categories || {},
+      goals: stored.goals || {},
+      alerts: stored.alerts || {},
+      settings: { idleSeconds: 60, ...(stored.settings || {}) }
+    };
   }
 
   async function write(data) {
     await chrome.storage.local.set({ [KEY]: data });
   }
 
+  // Split intervals at local midnight so each day receives only its own time.
   async function addDuration(domain, startMs, endMs) {
-    const duration = Math.max(0, Math.floor((endMs - startMs) / 1000));
-    if (!domain || duration < 1) return;
+    if (!domain || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return [];
     const data = await read();
-    const day = todayKey(new Date(startMs));
-    data.days[day] ||= {};
-    data.days[day][domain] = (data.days[day][domain] || 0) + duration;
+    const touched = [];
+    let cursor = startMs;
+
+    while (cursor < endMs) {
+      const day = todayKey(new Date(cursor));
+      const midnight = new Date(cursor);
+      midnight.setHours(24, 0, 0, 0);
+      const segmentEnd = Math.min(endMs, midnight.getTime());
+      const seconds = Math.floor((segmentEnd - cursor) / 1000);
+
+      if (seconds > 0) {
+        data.days[day] ||= {};
+        data.days[day][domain] = (data.days[day][domain] || 0) + seconds;
+        touched.push({ day, domain, seconds, totalSeconds: data.days[day][domain] });
+      }
+      cursor = segmentEnd;
+    }
+
+    if (touched.length) await write(data);
+    return touched;
+  }
+
+  async function claimAlert(day, domain, threshold) {
+    const data = await read();
+    const key = day + "|" + domain + "|" + threshold;
+    if (data.alerts[key]) return false;
+    data.alerts[key] = true;
     await write(data);
+    return true;
   }
 
   async function getData() { return read(); }
+
   async function setCategory(domain, category) {
+    const cleanDomain = normalizeDomain(domain);
+    if (!cleanDomain || !CATEGORIES.includes(category)) throw new Error("Choose a valid website and category.");
     const data = await read();
-    data.categories[domain] = category;
+    data.categories[cleanDomain] = category;
     await write(data);
-  }
-  async function setGoal(domain, seconds) {
-    const data = await read();
-    if (seconds > 0) data.goals[domain] = seconds;
-    else delete data.goals[domain];
-    await write(data);
-  }
-  async function replaceData(data) {
-    if (!data || data.version !== VERSION || typeof data.days !== "object") {
-      throw new Error("Invalid TimeTrace backup file.");
-    }
-    await write({
-      version: VERSION,
-      days: data.days || {},
-      categories: data.categories || {},
-      goals: data.goals || {},
-      settings: data.settings || { idleSeconds: 60 }
-    });
   }
 
-  globalThis.TimeTraceStore = { todayKey, domainFromUrl, defaultCategory, read, write, addDuration, getData, setCategory, setGoal, replaceData };
+  async function setGoal(domain, seconds) {
+    const cleanDomain = normalizeDomain(domain);
+    const limit = Math.floor(Number(seconds));
+    if (!cleanDomain) throw new Error("Enter a valid domain, such as example.com.");
+    if (!Number.isFinite(limit) || limit < 0 || limit > 86400) throw new Error("Goal must be between 1 minute and 24 hours.");
+    const data = await read();
+    if (limit > 0) data.goals[cleanDomain] = limit;
+    else delete data.goals[cleanDomain];
+    await write(data);
+  }
+
+  async function replaceData(data) {
+    if (!data || data.version !== VERSION || !data.days || typeof data.days !== "object" || Array.isArray(data.days)) {
+      throw new Error("Invalid TimeTrace backup file.");
+    }
+    const safe = emptyData();
+    safe.days = data.days;
+    safe.categories = data.categories && typeof data.categories === "object" ? data.categories : {};
+    safe.goals = data.goals && typeof data.goals === "object" ? data.goals : {};
+    safe.alerts = data.alerts && typeof data.alerts === "object" ? data.alerts : {};
+    safe.settings = { idleSeconds: 60, ...(data.settings || {}) };
+    await write(safe);
+  }
+
+  globalThis.TimeTraceStore = {
+    todayKey, domainFromUrl, normalizeDomain, defaultCategory, read, write,
+    addDuration, claimAlert, getData, setCategory, setGoal, replaceData
+  };
 })();
