@@ -69,7 +69,7 @@ function renderStats(today) {
   const previousTotal = previousWeek.reduce((sum, date) => sum + dayTotal(appData.days[dateKey(date)]), 0);
   if (previousTotal > 0) {
     const change = Math.round(((currentTotal - previousTotal) / previousTotal) * 100);
-    $("todayChange").textContent = Math.abs(change) + "% " + (change > 0 ? "more" : change < 0 ? "less" : "same") + " than previous 7 days";
+    $("todayChange").textContent = "Last 7 days: " + Math.abs(change) + "% " + (change > 0 ? "more" : change < 0 ? "less" : "same") + " vs previous 7 days";
   } else {
     $("todayChange").textContent = "Across all websites";
   }
