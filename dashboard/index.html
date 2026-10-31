@@ -12,12 +12,14 @@
       <div class="brand"><div class="brand-mark">T</div><div><b>TimeTrace</b><small>PERSONAL ANALYTICS</small></div></div>
       <div class="nav-label">WORKSPACE</div>
       <a class="nav active" href="#overview">▦ &nbsp; Overview</a>
+      <a class="nav" href="#intelligence">▤ &nbsp; Activity intelligence</a>
       <a class="nav" href="#categories">◒ &nbsp; Categories</a>
       <a class="nav" href="#websites">◷ &nbsp; Websites</a>
       <a class="nav" href="#goals">◎ &nbsp; Goals</a>
+      <a class="nav" href="#settings">⚙ &nbsp; Settings</a>
       <div class="sidebar-bottom">
         <div class="privacy"><span>●</span><b>Your data stays yours</b><p>All tracking and analytics stay on this browser. No account, no cloud.</p></div>
-        <small>TIMETRACE · VERSION 1.1.0</small>
+        <small>TIMETRACE · VERSION 1.2.0</small>
       </div>
     </aside>
     <main class="main">
@@ -46,6 +48,26 @@
         <div class="chart-legend"><span><i></i> Time spent browsing</span><b id="average">Daily average: 0m</b></div>
       </section>
 
+      <section id="intelligence" class="panel">
+        <div class="panel-head">
+          <div><h2>Activity intelligence</h2><p>See when you browse and when your focus time peaks</p></div>
+          <span class="muted">Last 7 days</span>
+        </div>
+        <div class="intelligence-stats">
+          <article class="mini-stat"><span>FOCUS TIME</span><strong id="focusTime">0m</strong><small>Work + Learning categories</small></article>
+          <article class="mini-stat"><span>PEAK FOCUS HOUR</span><strong id="peakHour">—</strong><small id="peakHourMeta">Not enough activity yet</small></article>
+          <article class="mini-stat"><span>WEEK-OVER-WEEK</span><strong id="weekChange">—</strong><small id="weekChangeMeta">Compared with previous 7 days</small></article>
+        </div>
+        <div class="heatmap-heading"><strong>Hourly activity heatmap</strong><span>Combined browsing time · last 7 days</span></div>
+        <div id="hourlyHeatmap" class="hourly-heatmap"></div>
+        <div class="heatmap-legend"><span>Less</span><i class="heat-level level-0"></i><i class="heat-level level-1"></i><i class="heat-level level-2"></i><i class="heat-level level-3"></i><i class="heat-level level-4"></i><span>More</span></div>
+        <div class="timeline-heading">
+          <div><strong>Daily activity timeline</strong><p>Website usage grouped by hour</p></div>
+          <input id="timelineDate" type="date" aria-label="Choose timeline date">
+        </div>
+        <div id="timelineList" class="timeline-list"></div>
+      </section>
+
       <section id="categories" class="panel">
         <div class="panel-head"><div><h2>Category breakdown</h2><p>How your browsing time is distributed in the selected period</p></div><span class="muted" id="categoryPeriod">Last 7 days</span></div>
         <div id="categoryBreakdown" class="category-breakdown"></div>
@@ -67,6 +89,20 @@
         <div id="goalList" class="goal-list"></div>
       </section>
 
+      <section id="settings" class="panel">
+        <div class="panel-head"><div><h2>Data & privacy</h2><p>Choose how long TimeTrace keeps browsing history on this device</p></div></div>
+        <div class="settings-row">
+          <div><strong>History retention</strong><p>Older daily and hourly activity is automatically removed. Your categories and goals stay saved.</p></div>
+          <select id="retentionSelect" class="retention-select" aria-label="History retention period">
+            <option value="30">30 days</option>
+            <option value="90">90 days</option>
+            <option value="180">180 days</option>
+            <option value="365">1 year</option>
+            <option value="0">Keep forever</option>
+          </select>
+        </div>
+        <p id="retentionFeedback" class="form-feedback" aria-live="polite"></p>
+      </section>
       <footer class="footer">TIMETRACE · PRIVATE BY DESIGN <span>Active-tab time estimate · Stored on this device</span></footer>
     </main>
   </div>
