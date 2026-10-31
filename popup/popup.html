@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TimeTrace</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="popup">
+    <header><div class="brand-mark">T</div><div><strong>TimeTrace</strong><small>YOUR BROWSING, IN FOCUS</small></div><span class="live-dot"></span></header>
+    <section class="hero"><span class="eyebrow">TODAY'S SCREEN TIME</span><div id="total" class="total">0m</div><p id="subtitle">Your browsing activity today</p></section>
+    <section class="section-head"><strong>Top websites</strong><span>Today</span></section>
+    <div id="sites" class="sites"><div class="empty">No activity recorded yet.</div></div>
+    <button id="openDashboard" class="button">Open full dashboard <span>↗</span></button>
+    <footer>Private by design · Stored on this device</footer>
+  </main>
+  <script src="../storage.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
