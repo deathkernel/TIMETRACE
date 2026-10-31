@@ -18,7 +18,7 @@ A privacy-first Chrome Manifest V3 extension for understanding active browsing t
 5. Pin TimeTrace to the toolbar.
 
 ## Privacy
-TimeTrace stores domain-level durations, category choices, goals and alert markers in chrome.storage.local. Its tracking session timestamp is stored in chrome.storage.session so it can survive service-worker suspension but is cleared when the browser session ends. It does not record page contents, full URLs, form values or keystrokes.
+TimeTrace stores domain-level durations, category choices, goals and alert markers in chrome.storage.local. Its current tracking interval is stored in chrome.storage.session so it survives service-worker suspension. Chrome clears this session state if the extension is disabled, reloaded or updated, and when the browser restarts; tracking then resumes with a fresh interval. It does not record page contents, full URLs, form values or keystrokes.
 
 The extension requests tabs, storage, idle, alarms and notifications permissions. Broad HTTP/HTTPS host access is used only to read the active tab's hostname. All analysis runs locally.
 
