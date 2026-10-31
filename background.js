@@ -3,6 +3,7 @@ importScripts("storage.js");
 const IDLE_SECONDS = 60;
 const HEARTBEAT_MINUTES = 0.5;
 const STATE_KEY = "timetraceTrackingState";
+const FOCUS_KEY = "timetraceChromeFocused";
 let queue = Promise.resolve();
 
 function serialized(task) {
@@ -16,6 +17,8 @@ function supportedTab(tab) {
 }
 
 async function getCandidate() {
+  const focusState = await chrome.storage.session.get(FOCUS_KEY);
+  if (focusState[FOCUS_KEY] === false) return null;
   const win = await chrome.windows.getLastFocused({ populate: true });
   if (!win.focused || win.state === "minimized") return null;
   return supportedTab((win.tabs || []).find(tab => tab.active));
@@ -92,7 +95,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.url || changeInfo.status === "complete") serialized(reconcile);
 });
 chrome.tabs.onRemoved.addListener(() => serialized(reconcile));
-chrome.windows.onFocusChanged.addListener(() => serialized(reconcile));
+chrome.windows.onFocusChanged.addListener(windowId => serialized(async () => {
+  await chrome.storage.session.set({ [FOCUS_KEY]: windowId !== chrome.windows.WINDOW_ID_NONE });
+  await reconcile();
+}));
 chrome.idle.onStateChanged.addListener(() => serialized(reconcile));
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
