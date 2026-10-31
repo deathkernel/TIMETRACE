@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "TimeTrace — Website Time Tracker",
+  "version": "1.0.0",
+  "description": "Understand your browsing habits with private, local website time tracking.",
+  "permissions": ["tabs", "storage", "idle", "alarms"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_title": "TimeTrace",
+    "default_popup": "popup/popup.html"
+  },
+  "options_page": "dashboard/index.html",
+  "icons": {}
+}
