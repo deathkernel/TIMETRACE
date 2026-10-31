@@ -34,6 +34,115 @@ function getDates(count, offset = 0) {
   return dates;
 }
 
+function localDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return year + "-" + month + "-" + day;
+}
+
+function hourTotals(dates, productiveOnly = false) {
+  const totals = Array(24).fill(0);
+  for (const date of dates) {
+    const dayHours = appData.hours[dateKey(date)] || {};
+    for (const [hour, sites] of Object.entries(dayHours)) {
+      for (const [domain, seconds] of Object.entries(sites || {})) {
+        if (!productiveOnly || ["Work", "Learning"].includes(categoryFor(domain))) {
+          totals[Number(hour)] += Number(seconds || 0);
+        }
+      }
+    }
+  }
+  return totals;
+}
+
+function hourLabel(hour) {
+  const start = new Date();
+  start.setHours(hour, 0, 0, 0);
+  const end = new Date(start);
+  end.setHours(hour + 1, 0, 0, 0);
+  const fmtHour = date => date.toLocaleTimeString(undefined, { hour: "numeric", hour12: true });
+  return fmtHour(start) + " – " + fmtHour(end);
+}
+
+function renderIntelligence() {
+  const dates = getDates(7);
+  const allHours = hourTotals(dates);
+  const focusHours = hourTotals(dates, true);
+  const totalFocus = focusHours.reduce((sum, value) => sum + value, 0);
+  const peak = Math.max(...focusHours);
+  const peakIndex = focusHours.indexOf(peak);
+
+  $("focusTime").textContent = fmt(totalFocus);
+  $("peakHour").textContent = peak > 0 ? hourLabel(peakIndex) : "—";
+  $("peakHourMeta").textContent = peak > 0 ? fmt(peak) + " of Work + Learning activity" : "No focus activity recorded";
+
+  const currentTotal = dates.reduce((sum, date) => sum + dayTotal(appData.days[dateKey(date)]), 0);
+  const previousDates = getDates(7, 7);
+  const previousTotal = previousDates.reduce((sum, date) => sum + dayTotal(appData.days[dateKey(date)]), 0);
+  if (previousTotal > 0) {
+    const change = Math.round((currentTotal - previousTotal) / previousTotal * 100);
+    $("weekChange").textContent = (change > 0 ? "+" : "") + change + "%";
+    $("weekChangeMeta").textContent = fmt(currentTotal) + " this week vs " + fmt(previousTotal) + " previous week";
+  } else {
+    $("weekChange").textContent = "—";
+    $("weekChangeMeta").textContent = "Not enough previous-week data";
+  }
+
+  const max = Math.max(...allHours, 1);
+  const heatmap = $("hourlyHeatmap");
+  heatmap.innerHTML = "";
+  allHours.forEach((seconds, hour) => {
+    const ratio = seconds / max;
+    const level = seconds === 0 ? 0 : ratio < 0.25 ? 1 : ratio < 0.5 ? 2 : ratio < 0.75 ? 3 : 4;
+    const cell = document.createElement("div");
+    cell.className = "heat-cell level-" + level;
+    cell.title = hourLabel(hour) + ": " + fmt(seconds);
+    const time = document.createElement("span");
+    time.textContent = String(hour).padStart(2, "0");
+    cell.append(time);
+    heatmap.append(cell);
+  });
+}
+
+function renderTimeline(dayKey) {
+  const timeline = $("timelineList");
+  timeline.innerHTML = "";
+  const dayHours = appData.hours[dayKey] || {};
+  let hasActivity = false;
+
+  for (let hour = 0; hour < 24; hour++) {
+    const sites = Object.entries(dayHours[String(hour)] || {}).sort((a, b) => b[1] - a[1]);
+    const total = sites.reduce((sum, [, seconds]) => sum + Number(seconds || 0), 0);
+    if (!total) continue;
+    hasActivity = true;
+
+    const row = document.createElement("div");
+    row.className = "timeline-row";
+    const label = document.createElement("time");
+    label.textContent = hourLabel(hour);
+    const detail = document.createElement("div");
+    detail.className = "timeline-sites";
+    for (const [domain, seconds] of sites) {
+      const site = document.createElement("span");
+      site.className = "timeline-site";
+      site.textContent = domain + " · " + fmt(seconds);
+      detail.append(site);
+    }
+    const totalLabel = document.createElement("strong");
+    totalLabel.textContent = fmt(total);
+    row.append(label, detail, totalLabel);
+    timeline.append(row);
+  }
+
+  if (!hasActivity) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No hourly activity for this date. Hour-by-hour tracking starts with this version.";
+    timeline.append(empty);
+  }
+}
+
 function aggregateCategories(dates) {
   const totals = Object.fromEntries(categories.map(category => [category, 0]));
   for (const date of dates) {
@@ -63,16 +172,7 @@ function renderStats(today) {
   $("goalsMet").textContent = withinLimit + "/" + goals.length;
   $("goalsMeta").textContent = goals.length ? "Currently within daily limits" : "No daily goals configured";
 
-  const currentWeek = getDates(7);
-  const previousWeek = getDates(7, 7);
-  const currentTotal = currentWeek.reduce((sum, date) => sum + dayTotal(appData.days[dateKey(date)]), 0);
-  const previousTotal = previousWeek.reduce((sum, date) => sum + dayTotal(appData.days[dateKey(date)]), 0);
-  if (previousTotal > 0) {
-    const change = Math.round(((currentTotal - previousTotal) / previousTotal) * 100);
-    $("todayChange").textContent = "Last 7 days: " + Math.abs(change) + "% " + (change > 0 ? "more" : change < 0 ? "less" : "same") + " vs previous 7 days";
-  } else {
-    $("todayChange").textContent = "Across all websites";
-  }
+  $("todayChange").textContent = "Tracked websites today";
 }
 
 function renderChart() {
@@ -239,6 +339,9 @@ async function render() {
   appData = await TimeTraceStore.getData();
   const today = appData.days[TimeTraceStore.todayKey()] || {};
   renderStats(today);
+  renderIntelligence();
+  renderTimeline($("timelineDate").value || localDateInputValue());
+  $("retentionSelect").value = String(appData.settings.retentionDays ?? 365);
   renderChart();
   renderCategories();
   renderWebsites(today);
@@ -252,6 +355,26 @@ document.querySelectorAll("[data-range]").forEach(button => {
     renderChart();
     renderCategories();
   });
+});
+
+$("timelineDate").value = localDateInputValue();
+$("timelineDate").addEventListener("change", () => {
+  if ($("timelineDate").value) renderTimeline($("timelineDate").value);
+});
+
+$("retentionSelect").addEventListener("change", async () => {
+  const feedback = $("retentionFeedback");
+  try {
+    const result = await TimeTraceStore.setRetention(Number($("retentionSelect").value));
+    feedback.textContent = result.removedDays
+      ? "Retention updated. Removed " + result.removedDays + " old day(s) of history."
+      : "History retention preference saved.";
+    feedback.className = "form-feedback success";
+    await render();
+  } catch (error) {
+    feedback.textContent = error.message;
+    feedback.className = "form-feedback error";
+  }
 });
 
 $("goalForm").addEventListener("submit", async event => {
