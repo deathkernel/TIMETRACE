@@ -46,7 +46,7 @@
   }
 
   function emptyData() {
-    return { version: VERSION, days: {}, categories: {}, goals: {}, alerts: {}, settings: { idleSeconds: 60 } };
+    return { version: VERSION, days: {}, hours: {}, categories: {}, goals: {}, alerts: {}, settings: { idleSeconds: 60, retentionDays: 365 } };
   }
 
   async function read() {
@@ -57,10 +57,11 @@
       ...emptyData(),
       ...stored,
       days: stored.days || {},
+      hours: stored.hours || {},
       categories: stored.categories || {},
       goals: stored.goals || {},
       alerts: stored.alerts || {},
-      settings: { idleSeconds: 60, ...(stored.settings || {}) }
+      settings: { idleSeconds: 60, retentionDays: 365, ...(stored.settings || {}) }
     };
   }
 
@@ -68,7 +69,7 @@
     await chrome.storage.local.set({ [KEY]: data });
   }
 
-  // Split intervals at local midnight so each day receives only its own time.
+  // Store the same tracked seconds by day and by local hour for heatmap analytics.
   async function addDuration(domain, startMs, endMs) {
     if (!domain || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return [];
     const data = await read();
@@ -76,16 +77,21 @@
     let cursor = startMs;
 
     while (cursor < endMs) {
-      const day = todayKey(new Date(cursor));
-      const midnight = new Date(cursor);
-      midnight.setHours(24, 0, 0, 0);
-      const segmentEnd = Math.min(endMs, midnight.getTime());
+      const date = new Date(cursor);
+      const day = todayKey(date);
+      const hour = String(date.getHours());
+      const nextHour = new Date(date);
+      nextHour.setMinutes(60, 0, 0);
+      const segmentEnd = Math.min(endMs, nextHour.getTime());
       const seconds = Math.floor((segmentEnd - cursor) / 1000);
 
       if (seconds > 0) {
         data.days[day] ||= {};
         data.days[day][domain] = (data.days[day][domain] || 0) + seconds;
-        touched.push({ day, domain, seconds, totalSeconds: data.days[day][domain] });
+        data.hours[day] ||= {};
+        data.hours[day][hour] ||= {};
+        data.hours[day][hour][domain] = (data.hours[day][hour][domain] || 0) + seconds;
+        touched.push({ day: day, hour: Number(hour), domain: domain, seconds: seconds, totalSeconds: data.days[day][domain] });
       }
       cursor = segmentEnd;
     }
@@ -124,12 +130,47 @@
     await write(data);
   }
 
+  async function setRetention(days) {
+    const value = Number(days);
+    if (![0, 30, 90, 180, 365].includes(value)) throw new Error("Choose a supported history retention period.");
+    const data = await read();
+    data.settings.retentionDays = value;
+    await write(data);
+    return pruneOldData();
+  }
+
+  async function pruneOldData(now = new Date()) {
+    const data = await read();
+    const retention = Number(data.settings.retentionDays);
+    if (!retention) return { removedDays: 0 };
+    const cutoff = new Date(now);
+    cutoff.setHours(0, 0, 0, 0);
+    cutoff.setDate(cutoff.getDate() - retention + 1);
+    const cutoffKey = todayKey(cutoff);
+    let removedDays = 0;
+    for (const key of Object.keys(data.days)) {
+      if (key < cutoffKey) {
+        delete data.days[key];
+        removedDays += 1;
+      }
+    }
+    for (const key of Object.keys(data.hours)) {
+      if (key < cutoffKey) delete data.hours[key];
+    }
+    for (const key of Object.keys(data.alerts)) {
+      if (key.split("|", 1)[0] < cutoffKey) delete data.alerts[key];
+    }
+    await write(data);
+    return { removedDays: removedDays, cutoffKey: cutoffKey };
+  }
+
   async function replaceData(data) {
     if (!data || data.version !== VERSION || !data.days || typeof data.days !== "object" || Array.isArray(data.days)) {
       throw new Error("Invalid TimeTrace backup file.");
     }
     const safe = emptyData();
     safe.days = data.days;
+    safe.hours = data.hours && typeof data.hours === "object" ? data.hours : {};
     safe.categories = data.categories && typeof data.categories === "object" ? data.categories : {};
     safe.goals = data.goals && typeof data.goals === "object" ? data.goals : {};
     safe.alerts = data.alerts && typeof data.alerts === "object" ? data.alerts : {};
@@ -139,6 +180,6 @@
 
   globalThis.TimeTraceStore = {
     todayKey, domainFromUrl, normalizeDomain, defaultCategory, read, write,
-    addDuration, claimAlert, getData, setCategory, setGoal, replaceData
+    addDuration, claimAlert, getData, setCategory, setGoal, setRetention, pruneOldData, replaceData
   };
 })();
